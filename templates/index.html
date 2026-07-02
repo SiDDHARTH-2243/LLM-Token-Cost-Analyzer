@@ -226,6 +226,7 @@
             const outputTokenInput = document.getElementById('outputTokens').value;
             const statusBox = document.getElementById('statusMessage');
             const tableBody = document.getElementById('tableBody');
+            const submitBtn = document.querySelector('button');
 
             if (!textInput.trim()) {
                 statusBox.innerText = "Error: Input payload matrix cannot be empty.";
@@ -238,8 +239,12 @@
                 return;
             }
 
-            statusBox.innerText = "Computing asymmetrical pricing matrices...";
-            statusBox.style.color = "var(--text-muted)";
+            // COLD START UI FIX: Explicit warning and button lock
+            statusBox.innerText = "Waking up server instance... (This can take up to 60 seconds on the free tier. Please do not close this tab).";
+            statusBox.style.color = "var(--primary)";
+            submitBtn.disabled = true;
+            submitBtn.innerText = "Connecting...";
+            tableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">Awaiting server response...</td></tr>`;
 
             try {
                 const response = await fetch('/api/analyze', {
@@ -282,8 +287,12 @@
                 statusBox.style.color = "var(--text-main)";
                 
             } catch (error) {
-                statusBox.innerText = "Server Unreachable: " + error;
+                statusBox.innerText = "Network Error: The server may still be booting up. Please wait a moment and try again.";
                 statusBox.style.color = "var(--warning-text)";
+            } finally {
+                // UNLOCK UI: Re-enable the button regardless of success or failure
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Compare Architecture Metrics";
             }
         }
     </script>
