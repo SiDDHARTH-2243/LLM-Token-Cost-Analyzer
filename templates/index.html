@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Token & Cost Shock Analyzer</title>
+    <style>
+        :root {
+    --bg-color: #f8fafc;
+    --card-bg: #ffffff;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --border-color: #e2e8f0;
+    --primary: #ea580c;       /* Updated to standard Orange */
+    --primary-hover: #c2410c; /* Updated to darker Orange on hover */
+    --warning-bg: #fef2f2;
+    --warning-text: #dc2626;
+    --warning-border: #fca5a5;
+    --success-text: #16a34a;
+}
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        header h2 {
+            margin: 0 0 8px 0;
+            font-size: 1.75rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+        }
+
+        header p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+            padding: 24px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        textarea {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            resize: vertical;
+            background-color: #f8fafc;
+        }
+
+        textarea:focus, input:focus {
+            outline: 2px solid var(--primary);
+            outline-offset: -1px;
+        }
+
+        input[type="number"] {
+            width: 120px;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .action-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        #statusMessage {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background-color: #f1f5f9;
+            color: var(--text-main);
+            font-weight: 600;
+            padding: 14px 16px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-main);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .badge-standard {
+            color: var(--success-text);
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+
+        .badge-warning {
+            background-color: var(--warning-bg);
+            color: var(--warning-text);
+            border: 1px solid var(--warning-border);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h2>LLM Token & Cost Shock Analyzer</h2>
+            <p>Compare asymmetrical token pricing pipelines across primary model architectures.</p>
+        </header>
+
+        <div class="card">
+            <div class="form-group">
+                <label for="promptText">Input or System Prompt</label>
+                <textarea id="promptText" rows="8" placeholder="Paste structural system prompt here..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="outputTokens">Expected Generation Length (Tokens)</label>
+                <input type="number" id="outputTokens" value="1000" min="0">
+            </div>
+            
+            <div class="action-row">
+                <button onclick="analyzeCost()">Compare Architecture Metrics</button>
+                <span id="statusMessage">System idle. Ready for payload analytics.</span>
+            </div>
+        </div>
+
+        <div class="card table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Model Context</th>
+                        <th>Input Tokens</th>
+                        <th>Output Tokens</th>
+                        <th>Rates (In / Out per 1M)</th>
+                        <th>Cost (1 Run)</th>
+                        <th>Cost (1,000 Runs)</th>
+                        <th>Status Tiers</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                            No operational payload analyzed yet. Input data above to generate pricing structures.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        async function analyzeCost() {
+            const textInput = document.getElementById('promptText').value;
+            const outputTokenInput = document.getElementById('outputTokens').value;
+            const statusBox = document.getElementById('statusMessage');
+            const tableBody = document.getElementById('tableBody');
+
+            if (!textInput.trim()) {
+                statusBox.innerText = "Error: Input payload matrix cannot be empty.";
+                statusBox.style.color = "var(--warning-text)";
+                return;
+            }
+            if (!outputTokenInput || outputTokenInput < 0) {
+                statusBox.innerText = "Error: Output sequence parameter must be a non-negative integer.";
+                statusBox.style.color = "var(--warning-text)";
+                return;
+            }
+
+            statusBox.innerText = "Computing asymmetrical pricing matrices...";
+            statusBox.style.color = "var(--text-muted)";
+
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        text: textInput,
+                        expected_output_tokens: parseInt(outputTokenInput, 10)
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    statusBox.innerText = "Execution Error: " + data.error;
+                    statusBox.style.color = "var(--warning-text)";
+                    return;
+                }
+
+                tableBody.innerHTML = ""; 
+
+                data.comparisons.forEach(item => {
+                    const statusBadge = item.is_scaled_tier 
+                        ? `<span class="badge-warning">⚠️ Context Scaled (Rates Doubled)</span>` 
+                        : `<span class="badge-standard">Standard Rate Tier</span>`;
+
+                    const row = `<tr>
+                        <td><strong>${item.model_selected.toUpperCase()}</strong></td>
+                        <td>${item.input_tokens.toLocaleString()}</td>
+                        <td>${item.output_tokens.toLocaleString()}</td>
+                        <td>$${item.input_rate_per_1m.toFixed(2)} / $${item.output_rate_per_1m.toFixed(2)}</td>
+                        <td>$${item.cost_1_run_usd.toFixed(6)}</td>
+                        <td>$${item.cost_1000_runs_usd.toFixed(4)}</td>
+                        <td>${statusBadge}</td>
+                    </tr>`;
+                    tableBody.innerHTML += row;
+                });
+
+                statusBox.innerText = "Analysis compiled successfully.";
+                statusBox.style.color = "var(--text-main)";
+                
+            } catch (error) {
+                statusBox.innerText = "Server Unreachable: " + error;
+                statusBox.style.color = "var(--warning-text)";
+            }
+        }
+    </script>
+</body>
+</html>
