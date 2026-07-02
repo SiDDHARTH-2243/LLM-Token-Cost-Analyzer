@@ -1,5 +1,9 @@
 # LLM Token & Cost Shock Analyzer
 
+**Live Demo:** [LLM Token & Cost Shock Analyzer](https://llm-token-cost-analyzer.onrender.com)
+
+*(Note: Hosted on Render's free tier. The initial load may take 50 seconds if the instance is waking up from inactivity).*
+
 A lightweight, strictly modular Flask API and web interface designed to calculate the exact financial cost of executing large system prompts across multiple LLMs. 
 
 ## The Problem
@@ -19,8 +23,14 @@ This analyzer evaluates a single prompt against multiple models simultaneously, 
 * **Tokenization:** `tiktoken` (uses `o200k_base` and `cl100k_base` proxy encodings)
 * **Frontend:** Vanilla HTML/JS (No bloated frameworks, zero dependencies)
 
-## Local Installation & Execution
+## Local Installation
 
-1. **Clone the repository and navigate to the directory:**
-   ```bash
-   cd LLM_Token_Cost_Analyzer
+1. Clone the repository:
+   `git clone https://github.com/SiDDHARTH-2243/LLM-Token-Cost-Analyzer.git`
+2. Navigate to the directory:
+   `cd LLM-Token-Cost-Analyzer`
+3. Install dependencies:
+   `pip install -r requirements.txt`
+4. Run the local server:
+   `python app.py`
+5. Open `http://127.0.0.1:5000` in your browser.
